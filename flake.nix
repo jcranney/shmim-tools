@@ -16,7 +16,8 @@
         devShell = with pkgs; mkShell {
           buildInputs = [
             cmake cargo rustc rustfmt pre-commit
-            rustPackages.clippy pkg-config rustfmt rust-analyzer
+            pkg-config rustfmt rust-analyzer
+            cargo-watch clippy cargo-machete
           ];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
         };
