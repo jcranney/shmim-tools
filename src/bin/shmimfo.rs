@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
 use glob::glob;
-use risio::{Accessor, DataType, RawImage};
+use risio::{Accessor, RawImage, datatype::DataType};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -53,14 +53,14 @@ fn main() -> Result<()> {
 
         // print datatype
         // let datatype: DataType = unsafe { image._image.md.read() }.datatype.try_into()?;
-        match TryInto::<DataType>::try_into(unsafe { image._image.md.read() }.datatype) {
+        match TryInto::<DataType>::try_into(unsafe { image._image.md.get().read() }.datatype) {
             Ok(dt) => println!("type:  {}", format!("{:?}", dt).green()),
             Err(e) => println!("type:  {}", format!("{}", e.to_string()).red()),
         }
 
         // print dimensions
-        let size = unsafe { image._image.md.read().size };
-        let size_str = match unsafe { image._image.md.read().naxis } {
+        let size = unsafe { image._image.md.get().read().size };
+        let size_str = match unsafe { image._image.md.get().read().naxis } {
             1 => format!("[{}]", size[0]),
             2 => format!("[{},{}]", size[0], size[1]),
             3 => format!("[{},{},{}]", size[0], size[1], size[2]),
@@ -69,14 +69,14 @@ fn main() -> Result<()> {
         println!("size:  {}", size_str.green());
 
         // print some stats:
-        let sum = image.array().iter().sum::<f64>();
-        let mean: f64 = sum / image.array().len() as f64;
-        let std = image
+        let sum = unsafe { image.array().iter().sum::<f64>() };
+        let mean: f64 = sum / unsafe { image.array().len() } as f64;
+        let std = unsafe { image
             .array()
             .iter()
             .map(|x| (*x - mean).powf(2.0))
-            .sum::<f64>()
-            / image.array().len() as f64;
+            .sum::<f64>() }
+            / unsafe { image.array().len() } as f64;
         println!("sum:   {}", format!("{:0.6e}", sum).green());
         println!(
             "mean:  {} (std: {})",

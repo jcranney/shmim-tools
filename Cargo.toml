@@ -1,6 +1,6 @@
 [package]
 name = "shmim-tools"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 [dependencies]
@@ -8,4 +8,4 @@ anyhow = "1.0.103"
 clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
 glob = "0.3.3"
-risio = "0.1.4"
+risio = "0.1.6"
