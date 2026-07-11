@@ -1,10 +1,10 @@
 use anyhow::Result;
 use clap::Parser;
 use glob::glob;
-use rich_rust::prelude::*;
+use rich_rust::{r#box::*, prelude::*};
 use risio::{
     Accessor, RawImage,
-    datatype::{DataType, IsioDataType},
+    datatype::{ComplexFloat, DataType, IsioDataType},
 };
 
 #[derive(Parser, Debug)]
@@ -22,8 +22,59 @@ fn main() -> Result<()> {
     };
     let mut shmimfos = ShmImfoVec { v: vec![] };
     for name in files {
-        let image: RawImage<f64> = RawImage::open(&name)?;
-        shmimfos.v.push((&image).into());
+        if let Ok(im) = RawImage::<u8>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<u16>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<u32>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<u64>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<i8>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<i16>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<i32>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<i64>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        // if let Ok(im) = RawImage::<f16>::open(&name) {
+        //     shmimfos.v.push((&im).into());
+        //     continue;
+        // }
+        if let Ok(im) = RawImage::<f32>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<f64>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<ComplexFloat>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        if let Ok(im) = RawImage::<ComplexFloat>::open(&name) {
+            shmimfos.v.push((&im).into());
+            continue;
+        }
+        // shmimfos.v.push(shmimfo);
     }
     let table: Table = shmimfos.into();
     let console = Console::new();
@@ -78,7 +129,7 @@ impl From<ShmImfo> for Row {
             Cell::new(value.name),
             Cell::new(value.dtype),
             Cell::new(format!(
-                "[ {:^6} , {:^6} , {:^6} ]",
+                "[ {:^4} , {:^4} , {:^4} ]",
                 value.shape[0], value.shape[1], value.shape[2]
             )),
             Cell::new(value.cnt1.to_string()),
@@ -92,7 +143,10 @@ struct ShmImfoVec {
 
 impl From<ShmImfoVec> for Table {
     fn from(val: ShmImfoVec) -> Table {
-        let mut table = Table::new().title("ImageStreamIO IMAGEs");
+        let mut table = Table::new()
+            .border_style(Style::new().color(Color::from_ansi(6)))
+            .header_style(Style::new().color(Color::from_ansi(2)))
+            .box_style(&SQUARE);
         table.add_columns(vec![
             Column::new("NAME"),
             Column::new("DTYPE").justify(JustifyMethod::Center),
