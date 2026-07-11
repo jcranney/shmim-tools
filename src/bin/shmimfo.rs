@@ -1,8 +1,11 @@
 use anyhow::Result;
 use clap::Parser;
-use colored::Colorize;
 use glob::glob;
-use risio::{Accessor, RawImage, datatype::DataType};
+use rich_rust::prelude::*;
+use risio::{
+    Accessor, RawImage,
+    datatype::{DataType, IsioDataType},
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -14,81 +17,91 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
     let files = match args.names.len() {
-        0 => {
-            let mut files: Vec<String> = vec![];
-            for entry in glob("/dev/shm/*.im.shm").unwrap() {
-                match entry {
-                    Ok(path) => {
-                        let shmimname = path
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .rsplit_once(".im.shm")
-                            .unwrap()
-                            .0
-                            .to_string();
-                        files.push(shmimname);
-                    }
-                    Err(e) => eprintln!("{e}"),
-                };
-            }
-            files
-        }
+        0 => shmim_names(glob("/dev/shm/*.im.shm").unwrap()),
         _ => args.names,
     };
-
-    println!(
-        "{}",
-        "---------------------------------------------------------"
-            .to_string()
-            .blue()
-    );
+    let mut shmimfos = ShmImfoVec { v: vec![] };
     for name in files {
         let image: RawImage<f64> = RawImage::open(&name)?;
-
-        // print shmim name
-        let name = image.name().to_string();
-        println!("name:  {}", name.green());
-
-        // print datatype
-        // let datatype: DataType = unsafe { image._image.md.read() }.datatype.try_into()?;
-        match TryInto::<DataType>::try_into(unsafe { image._image.md.get().read() }.datatype) {
-            Ok(dt) => println!("type:  {}", format!("{:?}", dt).green()),
-            Err(e) => println!("type:  {}", format!("{}", e.to_string()).red()),
-        }
-
-        // print dimensions
-        let size = unsafe { image._image.md.get().read().size };
-        let size_str = match unsafe { image._image.md.get().read().naxis } {
-            1 => format!("[{}]", size[0]),
-            2 => format!("[{},{}]", size[0], size[1]),
-            3 => format!("[{},{},{}]", size[0], size[1], size[2]),
-            x => format!("invalid SHM image, naxis={x}, must be 1, 2, or 3."),
-        };
-        println!("size:  {}", size_str.green());
-
-        // print some stats:
-        let sum = unsafe { image.array().iter().sum::<f64>() };
-        let mean: f64 = sum / unsafe { image.array().len() } as f64;
-        let std = unsafe { image
-            .array()
-            .iter()
-            .map(|x| (*x - mean).powf(2.0))
-            .sum::<f64>() }
-            / unsafe { image.array().len() } as f64;
-        println!("sum:   {}", format!("{:0.6e}", sum).green());
-        println!(
-            "mean:  {} (std: {})",
-            format!("{:0.6e}", mean).green(),
-            format!("{:0.6e}", std).green()
-        );
-        println!(
-            "{}",
-            "---------------------------------------------------------"
-                .to_string()
-                .blue()
-        );
+        shmimfos.v.push((&image).into());
     }
+    let table: Table = shmimfos.into();
+    let console = Console::new();
+    console.print_renderable(&table);
     Ok(())
+}
+
+fn shmim_names(paths: glob::Paths) -> Vec<String> {
+    paths
+        .into_iter()
+        .map(|path| {
+            path.unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .rsplit_once(".im.shm")
+                .unwrap()
+                .0
+                .to_string()
+        })
+        .collect()
+}
+
+impl<'a, T: IsioDataType> From<&'a RawImage<'a, T>> for ShmImfo {
+    fn from(image: &'a RawImage<'a, T>) -> Self {
+        let x = unsafe { image.image().md.get().read() }.cnt0;
+        ShmImfo {
+            name: image.name().to_string(),
+            dtype: match TryInto::<DataType>::try_into(
+                unsafe { image._image.md.get().read() }.datatype,
+            ) {
+                Ok(dt) => format!("{:?}", dt),
+                Err(e) => e.to_string(),
+            },
+            shape: unsafe { image._image.md.get().read().size },
+            cnt1: x,
+        }
+    }
+}
+
+struct ShmImfo {
+    name: String,
+    dtype: String,
+    shape: [u32; 3],
+    cnt1: u64,
+}
+
+impl From<ShmImfo> for Row {
+    fn from(value: ShmImfo) -> Self {
+        Row::new(vec![
+            Cell::new(value.name),
+            Cell::new(value.dtype),
+            Cell::new(format!(
+                "[ {:^6} , {:^6} , {:^6} ]",
+                value.shape[0], value.shape[1], value.shape[2]
+            )),
+            Cell::new(value.cnt1.to_string()),
+        ])
+    }
+}
+
+struct ShmImfoVec {
+    v: Vec<ShmImfo>,
+}
+
+impl From<ShmImfoVec> for Table {
+    fn from(val: ShmImfoVec) -> Table {
+        let mut table = Table::new().title("ImageStreamIO IMAGEs");
+        table.add_columns(vec![
+            Column::new("NAME"),
+            Column::new("DTYPE").justify(JustifyMethod::Center),
+            Column::new("SHAPE").justify(JustifyMethod::Center),
+            Column::new("CNT1").justify(JustifyMethod::Center),
+        ]);
+        for x in val.v {
+            table.add_row(x.into());
+        }
+        table
+    }
 }

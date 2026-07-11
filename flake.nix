@@ -13,7 +13,7 @@
       in
       {
         defaultPackage = naersk-lib.buildPackage ./.;
-        devShell = with pkgs; mkShell {
+        devShell = with pkgs; mkShell rec {
           buildInputs = [
             cmake cargo rustc rustfmt pre-commit
             pkg-config rustfmt rust-analyzer
