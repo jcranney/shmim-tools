@@ -13,9 +13,7 @@
       in
       rec {
         defaultPackage = naersk-lib.buildPackage ./.;
-        packages = {
-          shmimfo = defaultPackage;
-        };
+        packages.default = defaultPackage;
         devShell = with pkgs; mkShell rec {
           buildInputs = [
             cmake cargo rustc rustfmt pre-commit
