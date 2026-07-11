@@ -11,8 +11,11 @@
         pkgs = import nixpkgs { inherit system; };
         naersk-lib = pkgs.callPackage naersk { };
       in
-      {
+      rec {
         defaultPackage = naersk-lib.buildPackage ./.;
+        packages = {
+          shmimfo = defaultPackage;
+        };
         devShell = with pkgs; mkShell rec {
           buildInputs = [
             cmake cargo rustc rustfmt pre-commit
