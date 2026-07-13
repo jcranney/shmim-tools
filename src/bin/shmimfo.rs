@@ -10,8 +10,11 @@ use risio::{
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Name of the shared memory image
+    /// Name of the shared memory image(s)
     names: Vec<String>,
+    /// write the output in "bare" mode, without pretty formatting.
+    #[clap(long, short, action)]
+    bare: bool,
 }
 
 fn main() -> Result<()> {
@@ -76,9 +79,25 @@ fn main() -> Result<()> {
         }
         // shmimfos.v.push(shmimfo);
     }
-    let table: Table = shmimfos.into();
-    let console = Console::new();
-    console.print_renderable(&table);
+    if args.bare {
+        println!("name dtype shape cnt1");
+        for shmimfo in shmimfos.v {
+            let ShmImfo {
+                name,
+                dtype,
+                shape,
+                cnt1,
+            } = shmimfo;
+            println!(
+                "{name} {dtype} [{},{},{}] {cnt1}",
+                shape[0], shape[1], shape[2]
+            );
+        }
+    } else {
+        let table: Table = shmimfos.into();
+        let console = Console::new();
+        console.print_renderable(&table);
+    }
     Ok(())
 }
 
@@ -107,7 +126,7 @@ impl<'a, T: IsioDataType> From<&'a RawImage<'a, T>> for ShmImfo {
             dtype: match TryInto::<DataType>::try_into(
                 unsafe { image._image.md.get().read() }.datatype,
             ) {
-                Ok(dt) => format!("{:?}", dt),
+                Ok(dt) => format!("{:?}", dt).to_ascii_lowercase(),
                 Err(e) => e.to_string(),
             },
             shape: unsafe { image._image.md.get().read().size },
@@ -127,7 +146,7 @@ impl From<ShmImfo> for Row {
     fn from(value: ShmImfo) -> Self {
         Row::new(vec![
             Cell::new(value.name),
-            Cell::new(value.dtype),
+            Cell::new(value.dtype.to_lowercase()),
             Cell::new(format!(
                 "[ {:^4} , {:^4} , {:^4} ]",
                 value.shape[0], value.shape[1], value.shape[2]
@@ -136,6 +155,8 @@ impl From<ShmImfo> for Row {
         ])
     }
 }
+
+// TODO: Add a bare mode without table formatting
 
 struct ShmImfoVec {
     v: Vec<ShmImfo>,
