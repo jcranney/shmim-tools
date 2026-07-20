@@ -13,7 +13,7 @@ use rand::distr::Distribution;
 use rand::distr::StandardUniform;
 use risio::datatype::ComplexDouble;
 use risio::{
-    Accessor, RawImage,
+    Accessor, ShmImage,
     datatype::{ComplexFloat, DataType, IsioDataType},
 };
 
@@ -98,9 +98,7 @@ fn main() -> Result<()> {
                 .or_else(|_| make_noise::<f64>(&args.name, shape, args.freq))
                 .or_else(|_| make_noise::<ComplexFloatWrap>(&args.name, shape, args.freq))
                 .or_else(|_| make_noise::<ComplexDoubleWrap>(&args.name, shape, args.freq))
-                .inspect_err(|_| {
-                    eprintln!("Couldn't open the image using any valid datatypes!")
-                })?
+                .inspect_err(|_| eprintln!("Couldn't open the image using any valid datatypes!"))?
         }
     };
     Ok(())
@@ -113,19 +111,19 @@ where
 {
     // Try and create the image (noting that it might be one, two, or three
     // dimensions depending on the CLI arguments)
-    let creation_result: Result<RawImage<T>, risio::error::Error> = match shape {
-        Shape::OneDim(x) => RawImage::<T>::create_new(name, &[x]),
-        Shape::TwoDim(x, y) => RawImage::<T>::create_new(name, &[x, y]),
-        Shape::ThreeDim(x, y, z) => RawImage::<T>::create_new(name, &[x, y, z]),
-        Shape::NotSpecified => RawImage::<T>::open(name),
+    let creation_result: Result<ShmImage<T>, risio::error::Error> = match shape {
+        Shape::OneDim(x) => ShmImage::<T>::create_new(name, &[x]),
+        Shape::TwoDim(x, y) => ShmImage::<T>::create_new(name, &[x, y]),
+        Shape::ThreeDim(x, y, z) => ShmImage::<T>::create_new(name, &[x, y, z]),
+        Shape::NotSpecified => ShmImage::<T>::open(name),
     };
 
     // If the creation was successful, get the image. If it failed for an IO
     // reason, we assume the file might exist so we try opening it.
-    let im = match creation_result {
+    let mut im = match creation_result {
         Ok(im) => im,
         Err(e) => match e {
-            risio::error::Error::StdIoError(_) => RawImage::<T>::open(name)?,
+            risio::error::Error::StdIoError(_) => ShmImage::<T>::open(name)?,
             e => return Err(e)?,
         },
     };
@@ -198,8 +196,8 @@ where
 
     loop {
         let start = Instant::now();
-        (unsafe { im.modify(|(_, x)| *x = rand::random()) })?;
-        unsafe { im._image.md.get().read().cnt0 += 1 };
+        unsafe { im.modify(|(_, x)| *x = rand::random()) }?;
+        unsafe { im.image_mut() }.md.cnt0 += 1;
         unsafe { im.sem_post_all() };
         match rx.try_recv() {
             Ok(()) => break,
