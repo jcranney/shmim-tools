@@ -5,10 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.104"
-clap = { version = "4.6.3", features = ["derive"] }
+clap = { version = "4.6.6", features = ["derive"] }
 colored = "3.1.1"
 ctrlc = "3.5.2"
-glob = "0.3.3"
+glob = "0.3.4"
 rand = "0.10.2"
-rich_rust = "0.2.2"
-risio = { version = "0.2.1", default-features = false }
+rich_rust = "0.2.3"
+risio = { version = "0.2.2", default-features = false }

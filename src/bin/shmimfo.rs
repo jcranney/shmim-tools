@@ -26,6 +26,8 @@ struct Args {
     /// more precise estimate.
     #[clap(long, short, default_value = "0.01")]
     period: f64,
+    #[clap(long, short, action)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
@@ -34,10 +36,17 @@ fn main() -> Result<()> {
         0 => shmim_names(glob("/dev/shm/*.im.shm").unwrap()),
         _ => args.names,
     };
-    let mut shmimfos = extract_shmimfo(&files);
+    if args.verbose {
+        println!("{:?}", files);
+    }
+    let mut shmimfos = extract_shmimfo(&files, args.verbose);
     if args.freq {
         std::thread::sleep(Duration::from_secs_f64(args.period));
-        for (shmimfo_old, shmimfo_new) in shmimfos.v.iter_mut().zip(extract_shmimfo(&files).v) {
+        for (shmimfo_old, shmimfo_new) in shmimfos
+            .v
+            .iter_mut()
+            .zip(extract_shmimfo(&files, args.verbose).v)
+        {
             let cnt_diff = u64::saturating_sub(shmimfo_new.cnt1, shmimfo_old.cnt1);
             match cnt_diff {
                 0 => {
@@ -95,62 +104,97 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn extract_shmimfo(files: &[String]) -> ShmImfoVec {
+fn extract_shmimfo(files: &[String], verbose: bool) -> ShmImfoVec {
     let mut shmimfos = ShmImfoVec {
         v: vec![],
         freq: false,
     };
     for name in files {
+        if verbose {
+            println!("Trying to open {name}");
+        }
         if let Ok(im) = ShmImage::<u8>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <u8>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<u16>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <u16>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<u32>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <u32>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<u64>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <u64>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<i8>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <i8>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<i16>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <i16>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<i32>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <i32>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<i64>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <i64>");
+            }
             continue;
         }
-        // if let Ok(im) = ShmImage::<f16>::open(&name) {
-        //     shmimfos.v.push((&im).into());
-        //     continue;
-        // }
         if let Ok(im) = ShmImage::<f32>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <f32>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<f64>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <f64>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<ComplexFloat>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <ComplexFloat>");
+            }
             continue;
         }
         if let Ok(im) = ShmImage::<ComplexFloat>::open(&name) {
             shmimfos.v.push((&im).into());
+            if verbose {
+                println!("Opened {name} as <ComplexFloat>");
+            }
             continue;
         }
     }
