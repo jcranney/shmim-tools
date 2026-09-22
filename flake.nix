@@ -1,26 +1,37 @@
 {
   inputs = {
-    naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, utils, naersk }:
+  outputs = { self, nixpkgs, utils, fenix, naersk }:
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        naersk-lib = pkgs.callPackage naersk { };
+        toolchain = with fenix.packages.${system}; combine [
+          minimal.cargo
+          minimal.rustc
+        ];
       in
-      rec {
-        defaultPackage = naersk-lib.buildPackage ./.;
-        packages.default = defaultPackage;
-        devShell = with pkgs; mkShell rec {
-          buildInputs = [
-            cmake cargo rustc rustfmt pre-commit
-            pkg-config rustfmt rust-analyzer
-            cargo-watch clippy cargo-machete
+      {
+        packages.default = (naersk.lib.${system}.override {
+          cargo = toolchain;
+          rustc = toolchain;
+        }).buildPackage {
+          src = ./.;
+        };
+        devShell = with pkgs; mkShell {
+          nativeBuildInputs = [
+              fenix.packages.${system}.complete.toolchain
           ];
-          RUST_SRC_PATH = rustPlatform.rustLibSrc;
         };
       }
     );
